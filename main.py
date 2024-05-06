@@ -3,9 +3,6 @@ import datetime
 import pwinput
 import oracledb
 
-suporte = {'id_suporte': 1, 'nome_empresa': 'Fiap',
-           'nome_pessoa': 'Yago', 'sobrenome_pessoa': 'Lucas',
-           'descricao': 'Comprei um serviço e tenho duvidas de como usar', 'id_pais': 1}
 
 usuario = input('Digite o seu usuário: ')
 senha = pwinput.pwinput('Digite a sua senha: ')
@@ -24,12 +21,18 @@ else:
     print('Conexão bem sucedida')
     conexao = True
 
+
+
 def criar_suporte() -> dict:
     """ Função responsável por criar o suporte no banco de dados """
     novo_suporte = {}
     while True:
         try:
             id_pais = int(input('Digite o id do pais: '))
+            cursor.execute(f'SELECT * FROM PAIS WHERE ID_PAIS = {id_pais}')
+            if len(cursor.fetchall()) == 0:
+                print('Nenhum País com este id')
+                continue
         except:
             print('O id precisa ser um numero inteiro')
             continue
@@ -46,10 +49,27 @@ def criar_suporte() -> dict:
 
 def cadastrar_suporte():
     """ Função responsável por cadastrar um novo suporte """
-    suporte = criar_suporte()
-    query = """INSERT INTO TESTE_GRATIS"""
-    print('Cadastrando Suporte')
-
+    while True:
+        suporte = criar_suporte()
+        print(suporte)
+        print('As informações estão corretas ?(digite apenas numeros)')
+        match input('1 - sim\n'
+                        '2 - não\n'):
+            case '1':    
+                try: 
+                    query = f"""INSERT INTO SUPORTE (NOME_EMPRESA, NOME_PESSOA, SOBRENOME_PESSOA, DESCRICAO, ID_PAIS) VALUES ('{suporte["nome_empresa"]}', '{suporte["nome_pessoa"]}', '{suporte["sobrenome_pessoa"]}', '{suporte["descricao"]}', {suporte["id_pais"]})"""
+                    cursor.execute(query)
+                    conn.commit()
+                    print('Suporte cadastrado com sucesso')
+                    atividade_do_site()
+                    return
+                except Exception as error:
+                    print(f'Erro ao inserir suporte {error}')    
+            case '2':
+                print('Vamos cadastrar novamente')
+                continue
+            case _:
+                print('Por favor escolha uma opção correta')
 
 def listar_suporte(filtro='all', parametro=''):
     """ Função responsável por listar todos os suportes do banco de dados """
@@ -67,6 +87,9 @@ def listar_suporte(filtro='all', parametro=''):
             print('Nenhum suporte cadastrado')
             return
         else:
+            print('Suportes recuperados: ')
+            for suporte in lista_suporte:
+                print(suporte)
             while True:
                 match input('Deseja salvar essa consulta ? digite apenas numeros\n'
                 '1 - Sim\n'
@@ -82,23 +105,25 @@ def listar_suporte(filtro='all', parametro=''):
                     case _:
                         print('Opção incorreta')
     except Exception as error:
-        print('Erro ao se conectar no banco de dados')    
+        print(f'Erro ao se conectar no banco de dados: {error}')    
     
 
     """ Esta função lista todos os suportes por data """
     data = input('Digite a data que você deseja buscar: ')
 
 
-def atividade_do_site(id_suporte: int):
-    """Função responsável por salvar uma atividade do site toda vez que um suporte é cadastrado"""
-    array_data = datetime.datetime.now()
-    ano = array_data.strftime('%y')
-    mes = array_data.month
-    dia = array_data.day
-    print(ano, mes, dia)
-    atividade_site = {'oportunidade': 'N', 'data': f'{ano}/{mes}/{dia}',
-                      'id_suporte': id_suporte, 'id_teste_gratis': None}
-    print(atividade_site)
+def atividade_do_site():
+    """ Função responsável por salvar uma atividade do site toda vez que um suporte é cadastrado """
+    try:
+        pegar_id = """SELECT ID_SUPORTE FROM SUPORTE ORDER BY ID_SUPORTE DESC FETCH FIRST 1 ROWS ONLY"""
+        cursor.execute(pegar_id)
+        id_suporte = cursor.fetchall()[0][0]
+        inserir_atividade = f"""INSERT INTO ATIVIDADE_DO_SITE(OPORTUNIDADE, DATA, ID_SUPORTE, ID_TESTE_GRATIS) VALUES ('N', SYSDATE, {id_suporte}, null)"""
+        cursor.execute(inserir_atividade)
+        conn.commit()
+    except Exception as erro:
+        print(f'Erro ao cadastrar atividade do site {erro}')    
+    
 
 
 def atualizar_suporte():
@@ -124,9 +149,9 @@ def salvar_json(lista_suporte: list, nome_arquivo: str):
             }
             nova_lista.append(dicionario)
         json.dump(nova_lista, arquivo, indent=4, ensure_ascii=False)
-        print(f'Sucesso ao salvar as informações no arquivo :{nome_arquivo}')
+        print(f'Sucesso ao salvar as informações no arquivo : {nome_arquivo}')
 
-while True:
+while conexao:
     opcao = input('Escolha uma opção Abaixo:\n'
                   '1 - Cadastrar\n'
                   '2 - Listar\n'
