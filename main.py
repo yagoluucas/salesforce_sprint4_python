@@ -1,5 +1,4 @@
 import json
-import datetime
 import pwinput
 import oracledb
 
@@ -20,7 +19,6 @@ except Exception as error:
 else:
     print('Conexão bem sucedida')
     conexao = True
-
 
 
 def criar_suporte() -> dict:
@@ -82,6 +80,7 @@ def atividade_do_site():
     except Exception as erro:
         print(f'Erro ao cadastrar atividade do site {erro}')   
 
+
 def listar_suporte(filtro='all', parametro=''):
     """ Função responsável por listar todos os suportes do banco de dados """
     lista_suporte = []
@@ -95,7 +94,7 @@ def listar_suporte(filtro='all', parametro=''):
         cursor.execute(query)
         lista_suporte = cursor.fetchall()
         if len(lista_suporte) == 0:
-            print('Nenhum suporte cadastrado')
+            print('Nenhum suporte recuperado')
             return
         else:
             print('Suportes recuperados: ')
@@ -143,7 +142,7 @@ def atualizar_suporte():
                     SOBRENOME_PESSOA = '{novo_suporte['sobrenome_pessoa']}', DESCRICAO = '{novo_suporte['descricao']}', ID_PAIS = {novo_suporte['id_pais']} WHERE ID_SUPORTE = {id_suporte}"""
         cursor.execute(query)
         conn.commit()
-        print('Suporte atualizado')
+        print(f'Suporte com o id {id_suporte} atualizado')
     except ValueError:
         print('o id do suporte precisa ser um numero inteiro')    
     except Exception as error:
@@ -152,7 +151,23 @@ def atualizar_suporte():
 
 def deletar_suporte():
     """ Função responsável por deletar um suporte """
-    print('Deletando suporte')
+    try:
+        id_suporte = int(input('Digite o id do suporte: '))
+        consultar_suporte = f"""SELECT ID_SUPORTE FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
+        cursor.execute(consultar_suporte)
+        if len(cursor.fetchall()) == 0:
+            print('Sem nenhum suporte com este id')
+            return
+        deletar_suporte = f"""DELETE FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
+        deletar_atividade_do_site = f"""DELETE FROM ATIVIDADE_DO_SITE WHERE ID_SUPORTE = {id_suporte}"""
+        cursor.execute(deletar_atividade_do_site)
+        cursor.execute(deletar_suporte)
+        conn.commit()
+        print(f'Suporte com o id {id_suporte} deletado')
+    except ValueError:
+        print('O id do suporte precisa ser um número inteiro')    
+    except Exception as error:
+        print(f'Erro ao deletar o suporte {error}')    
 
 
 def salvar_json(lista_suporte: list, nome_arquivo: str):
