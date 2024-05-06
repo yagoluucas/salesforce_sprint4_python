@@ -46,7 +46,6 @@ def criar_suporte() -> dict:
         break
     return novo_suporte
 
-
 def cadastrar_suporte():
     """ Função responsável por cadastrar um novo suporte """
     while True:
@@ -71,6 +70,18 @@ def cadastrar_suporte():
             case _:
                 print('Por favor escolha uma opção correta')
 
+def atividade_do_site():
+    """ Função responsável por salvar uma atividade do site toda vez que um suporte é cadastrado """
+    try:
+        pegar_id = """SELECT ID_SUPORTE FROM SUPORTE ORDER BY ID_SUPORTE DESC FETCH FIRST 1 ROWS ONLY"""
+        cursor.execute(pegar_id)
+        id_suporte = cursor.fetchall()[0][0]
+        inserir_atividade = f"""INSERT INTO ATIVIDADE_DO_SITE(OPORTUNIDADE, DATA, ID_SUPORTE, ID_TESTE_GRATIS) VALUES ('N', SYSDATE, {id_suporte}, null)"""
+        cursor.execute(inserir_atividade)
+        conn.commit()
+    except Exception as erro:
+        print(f'Erro ao cadastrar atividade do site {erro}')   
+
 def listar_suporte(filtro='all', parametro=''):
     """ Função responsável por listar todos os suportes do banco de dados """
     lista_suporte = []
@@ -89,7 +100,12 @@ def listar_suporte(filtro='all', parametro=''):
         else:
             print('Suportes recuperados: ')
             for suporte in lista_suporte:
-                print(suporte)
+                print(f'id do suporte: {suporte[0]}')
+                print(f'Nome da empresa: {suporte[1]}')
+                print(f'Nome completa da pessoa: {suporte[2]} {suporte[3]}')
+                print(f'Descrição da solicitação: {suporte[4]}')
+                print(f'id do pais da solicitação: {suporte[5]}')
+                print('-----------------------------------------------------')
             while True:
                 match input('Deseja salvar essa consulta ? digite apenas numeros\n'
                 '1 - Sim\n'
@@ -109,28 +125,30 @@ def listar_suporte(filtro='all', parametro=''):
     
 
     """ Esta função lista todos os suportes por data """
-    data = input('Digite a data que você deseja buscar: ')
-
-
-def atividade_do_site():
-    """ Função responsável por salvar uma atividade do site toda vez que um suporte é cadastrado """
-    try:
-        pegar_id = """SELECT ID_SUPORTE FROM SUPORTE ORDER BY ID_SUPORTE DESC FETCH FIRST 1 ROWS ONLY"""
-        cursor.execute(pegar_id)
-        id_suporte = cursor.fetchall()[0][0]
-        inserir_atividade = f"""INSERT INTO ATIVIDADE_DO_SITE(OPORTUNIDADE, DATA, ID_SUPORTE, ID_TESTE_GRATIS) VALUES ('N', SYSDATE, {id_suporte}, null)"""
-        cursor.execute(inserir_atividade)
-        conn.commit()
-    except Exception as erro:
-        print(f'Erro ao cadastrar atividade do site {erro}')    
+    data = input('Digite a data que você deseja buscar: ') 
     
-
 
 def atualizar_suporte():
     """ Função responsável por atualizar um suporte """
-    novo_suporte = criar_suporte()
-    print('Suporte atualizado')
-
+    try:
+        id_suporte = int(input('Digite o id do suporte: '))
+        verifica_suporte_cadastrado = f"""SELECT * FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
+        cursor.execute(verifica_suporte_cadastrado)
+        if len(cursor.fetchall()) == 0:
+            print('Nenhum suporte cadastrado com esse id')
+            return
+        novo_suporte = criar_suporte()
+        query = f"""UPDATE SUPORTE SET NOME_EMPRESA = '{novo_suporte['nome_empresa']}',
+                    NOME_PESSOA = '{novo_suporte['nome_pessoa']}', 
+                    SOBRENOME_PESSOA = '{novo_suporte['sobrenome_pessoa']}', DESCRICAO = '{novo_suporte['descricao']}', ID_PAIS = {novo_suporte['id_pais']} WHERE ID_SUPORTE = {id_suporte}"""
+        cursor.execute(query)
+        conn.commit()
+        print('Suporte atualizado')
+    except ValueError:
+        print('o id do suporte precisa ser um numero inteiro')    
+    except Exception as error:
+        print(f'Erro ao atualizar suporte {error}')
+    
 
 def deletar_suporte():
     """ Função responsável por deletar um suporte """
