@@ -27,12 +27,15 @@ def criar_suporte() -> dict:
     while True:
         try:
             id_pais = int(input('Digite o id do pais: '))
-            cursor.execute(f'SELECT * FROM PAIS WHERE ID_PAIS = {id_pais}')
+            cursor.execute(f'SELECT * FROM PAIS WHERE ID_PAIS = :1', [id_pais])
             if len(cursor.fetchall()) == 0:
                 print('Nenhum País com este id')
                 continue
-        except:
+        except ValueError:
             print('O id precisa ser um numero inteiro')
+            continue
+        except Exception as error:
+            print(f'Erro ao buscar o id do país {error}')
             continue
         nome_empresa = input('Digite o nome da sua empresa: ')
         nome_pessoa = input('Digite o seu nome: ')
@@ -54,8 +57,8 @@ def cadastrar_suporte():
                         '2 - não\n'):
             case '1':    
                 try: 
-                    query = f"""INSERT INTO SUPORTE (NOME_EMPRESA, NOME_PESSOA, SOBRENOME_PESSOA, DESCRICAO, ID_PAIS) VALUES ('{suporte["nome_empresa"]}', '{suporte["nome_pessoa"]}', '{suporte["sobrenome_pessoa"]}', '{suporte["descricao"]}', {suporte["id_pais"]})"""
-                    cursor.execute(query)
+                    query = f"""INSERT INTO SUPORTE (NOME_EMPRESA, NOME_PESSOA, SOBRENOME_PESSOA, DESCRICAO, ID_PAIS) VALUES (:1, :2, :3, :4, :5)"""
+                    cursor.execute(query, [suporte["nome_empresa"], suporte["nome_pessoa"], suporte["sobrenome_pessoa"], suporte["descricao"], suporte["id_pais"]])
                     conn.commit()
                     print('Suporte cadastrado com sucesso')
                     atividade_do_site()
@@ -86,12 +89,11 @@ def listar_suporte(filtro='all', parametro=''):
     lista_suporte = []
     try:
         if filtro == 'all':
-            query = """SELECT * FROM SUPORTE"""
-        elif filtro == 'id_suporte':  
-            query = f"""SELECT * FROM SUPORTE WHERE ID_SUPORTE = {parametro}"""
+            cursor.execute("""SELECT * FROM SUPORTE ORDER BY ID_SUPORTE DESC""")
+        elif filtro == 'id_suporte': 
+            cursor.execute("""SELECT * FROM SUPORTE WHERE ID_SUPORTE = :1 ORDER BY ID_SUPORTE DESC""", [parametro])
         else:
-            query = f"""SELECT * FROM SUPORTE WHERE ID_PAIS = {parametro}"""
-        cursor.execute(query)
+            cursor.execute("""SELECT * FROM SUPORTE WHERE ID_PAIS = :1 ORDER BY ID_SUPORTE DESC""", [parametro])
         lista_suporte = cursor.fetchall()
         if len(lista_suporte) == 0:
             print('Nenhum suporte recuperado')
@@ -112,7 +114,7 @@ def listar_suporte(filtro='all', parametro=''):
                     case '1':
                         nome_arquivo = input('Digite o nome do arquivo: ')
                         salvar_json(lista_suporte, nome_arquivo)
-                        print('Retornaodo ao menu principal')
+                        print('Retornando ao menu principal')
                         return
                     case '2':
                         print('Retornando ao menu principal')
@@ -131,16 +133,17 @@ def atualizar_suporte():
     """ Função responsável por atualizar um suporte """
     try:
         id_suporte = int(input('Digite o id do suporte: '))
-        verifica_suporte_cadastrado = f"""SELECT * FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
-        cursor.execute(verifica_suporte_cadastrado)
+        verifica_suporte_cadastrado = f"""SELECT * FROM SUPORTE WHERE ID_SUPORTE = :1"""
+        cursor.execute(verifica_suporte_cadastrado, [id_suporte])
         if len(cursor.fetchall()) == 0:
             print('Nenhum suporte cadastrado com esse id')
             return
         novo_suporte = criar_suporte()
-        query = f"""UPDATE SUPORTE SET NOME_EMPRESA = '{novo_suporte['nome_empresa']}',
-                    NOME_PESSOA = '{novo_suporte['nome_pessoa']}', 
-                    SOBRENOME_PESSOA = '{novo_suporte['sobrenome_pessoa']}', DESCRICAO = '{novo_suporte['descricao']}', ID_PAIS = {novo_suporte['id_pais']} WHERE ID_SUPORTE = {id_suporte}"""
-        cursor.execute(query)
+        query = f"""UPDATE SUPORTE SET NOME_EMPRESA = :1,
+                    NOME_PESSOA = :2, 
+                    SOBRENOME_PESSOA = :3, DESCRICAO = :4, ID_PAIS = :5 WHERE ID_SUPORTE = :6"""
+        
+        cursor.execute(query, [novo_suporte['nome_empresa'], novo_suporte['nome_pessoa'], novo_suporte['sobrenome_pessoa'], novo_suporte['descricao'], novo_suporte['id_pais'], id_suporte])
         conn.commit()
         print(f'Suporte com o id {id_suporte} atualizado')
     except ValueError:
@@ -153,15 +156,14 @@ def deletar_suporte():
     """ Função responsável por deletar um suporte """
     try:
         id_suporte = int(input('Digite o id do suporte: '))
-        consultar_suporte = f"""SELECT ID_SUPORTE FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
-        cursor.execute(consultar_suporte)
+        cursor.execute("""SELECT ID_SUPORTE FROM SUPORTE WHERE ID_SUPORTE = :1""", [id_suporte])
         if len(cursor.fetchall()) == 0:
             print('Sem nenhum suporte com este id')
             return
-        deletar_suporte = f"""DELETE FROM SUPORTE WHERE ID_SUPORTE = {id_suporte}"""
-        deletar_atividade_do_site = f"""DELETE FROM ATIVIDADE_DO_SITE WHERE ID_SUPORTE = {id_suporte}"""
-        cursor.execute(deletar_atividade_do_site)
-        cursor.execute(deletar_suporte)
+        deletar_suporte = f"""DELETE FROM SUPORTE WHERE ID_SUPORTE = :1"""
+        deletar_atividade_do_site = f"""DELETE FROM ATIVIDADE_DO_SITE WHERE ID_SUPORTE = :1"""
+        cursor.execute(deletar_atividade_do_site, [id_suporte])
+        cursor.execute(deletar_suporte, [id_suporte])
         conn.commit()
         print(f'Suporte com o id {id_suporte} deletado')
     except ValueError:
@@ -182,7 +184,7 @@ def salvar_json(lista_suporte: list, nome_arquivo: str):
             }
             nova_lista.append(dicionario)
         json.dump(nova_lista, arquivo, indent=4, ensure_ascii=False)
-        print(f'Sucesso ao salvar as informações no arquivo : {nome_arquivo}')
+        print(f'Sucesso ao salvar as informações no arquivo : {nome_arquivo}.json')
 
 while conexao:
     opcao = input('Escolha uma opção Abaixo:\n'
