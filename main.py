@@ -3,6 +3,7 @@ import pwinput
 import oracledb
 
 
+# Caso esse arquivo seja enviado para você o usuário e senha do banco de dados estarão no arquivo credentials.txt
 usuario = input('Digite o seu usuário: ')
 senha = pwinput.pwinput('Digite a sua senha: ')
 
