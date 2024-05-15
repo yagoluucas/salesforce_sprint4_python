@@ -21,20 +21,27 @@ else:
     print('Conexão bem sucedida')
     conexao = True
 
+def listar_pais():
+    """ Função responsável por listar país pelo id """
+    try:
+        id_pais = valida_id('país')
+        cursor.execute(f'SELECT * FROM PAIS WHERE ID_PAIS = :1', [id_pais])
+        if len(cursor.fetchall()) == 0:
+            print('Nenhum País com este id')
+            return None
+        return id_pais
+    except Exception as error:
+        print(f'Erro ao buscar o id do país {error}')
+        return None
 
 def criar_suporte() -> dict:
     """ Função responsável por criar o suporte no banco de dados """
     novo_suporte = {}
     while True:
         try:
-            id_pais = int(input('Digite o id do pais: '))
-            cursor.execute(f'SELECT * FROM PAIS WHERE ID_PAIS = :1', [id_pais])
-            if len(cursor.fetchall()) == 0:
-                print('Nenhum País com este id')
+            id_pais = listar_pais()
+            if id_pais is None:
                 continue
-        except ValueError:
-            print('O id precisa ser um numero inteiro')
-            continue
         except Exception as error:
             print(f'Erro ao buscar o id do país {error}')
             continue
@@ -52,8 +59,13 @@ def cadastrar_suporte():
     """ Função responsável por cadastrar um novo suporte """
     while True:
         suporte = criar_suporte()
-        print(suporte)
         print('As informações estão corretas ?(digite apenas numeros)')
+        print('----------------------------------------------')
+        print(f'Nome da empresa: {suporte["nome_empresa"]}')
+        print(f'Nome completa da pessoa: {suporte["nome_pessoa"]} {suporte["sobrenome_pessoa"]}')
+        print(f'Descrição da solicitação: {suporte["descricao"]}')
+        print(f'id do pais da solicitação: {suporte["id_pais"]}')
+        print('----------------------------------------------')
         match input('1 - sim\n'
                         '2 - não\n'):
             case '1':    
@@ -133,7 +145,7 @@ def listar_suporte(filtro='all', parametro=''):
 def atualizar_suporte():
     """ Função responsável por atualizar um suporte """
     try:
-        id_suporte = int(input('Digite o id do suporte: '))
+        id_suporte = valida_id('suporte')
         verifica_suporte_cadastrado = f"""SELECT * FROM SUPORTE WHERE ID_SUPORTE = :1"""
         cursor.execute(verifica_suporte_cadastrado, [id_suporte])
         if len(cursor.fetchall()) == 0:
@@ -146,9 +158,7 @@ def atualizar_suporte():
         
         cursor.execute(query, [novo_suporte['nome_empresa'], novo_suporte['nome_pessoa'], novo_suporte['sobrenome_pessoa'], novo_suporte['descricao'], novo_suporte['id_pais'], id_suporte])
         conn.commit()
-        print(f'Suporte com o id {id_suporte} atualizado')
-    except ValueError:
-        print('o id do suporte precisa ser um numero inteiro')    
+        print(f'Suporte com o id {id_suporte} atualizado')  
     except Exception as error:
         print(f'Erro ao atualizar suporte {error}')
     
@@ -156,37 +166,68 @@ def atualizar_suporte():
 def deletar_suporte():
     """ Função responsável por deletar um suporte """
     try:
-        id_suporte = int(input('Digite o id do suporte: '))
-        cursor.execute("""SELECT ID_SUPORTE FROM SUPORTE WHERE ID_SUPORTE = :1""", [id_suporte])
-        if len(cursor.fetchall()) == 0:
+        id_suporte = valida_id('suporte')
+        cursor.execute("""SELECT * FROM SUPORTE WHERE ID_SUPORTE = :1""", [id_suporte])
+        suporte  = cursor.fetchall()
+        if len(suporte) == 0:
             print('Sem nenhum suporte com este id')
             return
-        deletar_suporte = f"""DELETE FROM SUPORTE WHERE ID_SUPORTE = :1"""
-        deletar_atividade_do_site = f"""DELETE FROM ATIVIDADE_DO_SITE WHERE ID_SUPORTE = :1"""
-        cursor.execute(deletar_atividade_do_site, [id_suporte])
-        cursor.execute(deletar_suporte, [id_suporte])
-        conn.commit()
-        print(f'Suporte com o id {id_suporte} deletado')
-    except ValueError:
-        print('O id do suporte precisa ser um número inteiro')    
+        print('Deseja realmente deletar este suporte ?')
+        print('----------------------------------------------')
+        print(f'id do suporte: {id_suporte}')
+        print(f'Nome da empresa: {suporte[0][1]}')
+        print(f'Nome completa da pessoa: {suporte[0][2]} {suporte[0][3]}')
+        print(f'Descrição da solicitação: {suporte[0][4]}')
+        print(f'id do pais da solicitação: {suporte[0][5]}')
+        print('----------------------------------------------')
+        while True:
+            match input('1 - sim\n'
+                    '2 - não\n'):
+                case '1':
+                    deletar_suporte = f"""DELETE FROM SUPORTE WHERE ID_SUPORTE = :1"""
+                    deletar_atividade_do_site = f"""DELETE FROM ATIVIDADE_DO_SITE WHERE ID_SUPORTE = :1"""
+                    cursor.execute(deletar_atividade_do_site, [id_suporte])
+                    cursor.execute(deletar_suporte, [id_suporte])
+                    conn.commit()
+                    print(f'Suporte com o id {id_suporte} deletado')  
+                    return
+                case '2':
+                    print('Retornando ao menu principal')
+                    return
+                case _:
+                    print('Por favor escolha uma opção correta')
+                    continue
     except Exception as error:
         print(f'Erro ao deletar o suporte {error}')    
 
 
+def valida_id(tipo_id: str) -> int:
+    """ Função responsável por validar o id"""
+    while True:
+        try:
+            id = int(input(f'Digite o id do {tipo_id}: '))
+            return id
+        except ValueError:
+            print('O id precisa ser um número inteiro')
+
 def salvar_json(lista_suporte: list, nome_arquivo: str):
     """ Função responsável por salvar a lista de suporte em um arquivo JSON """
-    with open(f'arquivo/{nome_arquivo}.json', 'w', encoding='utf-8') as arquivo:
-        nova_lista = []
-        for item in lista_suporte:
-            dicionario = {
-                'id_suporte': item[0], 'nome_empresa': item[1],
-                'nome_pessoa': item[2], 'sobrenome_pessoa': item[3],
-                'descricao': item[4], 'id_pais': item[5]
-            }
-            nova_lista.append(dicionario)
-        json.dump(nova_lista, arquivo, indent=4, ensure_ascii=False)
-        print(f'Sucesso ao salvar as informações no arquivo : {nome_arquivo}.json')
+    try:
+        with open(f'arquivo/{nome_arquivo}.json', 'w', encoding='utf-8') as arquivo:
+            nova_lista = []
+            for item in lista_suporte:
+                dicionario = {
+                    'id_suporte': item[0], 'nome_empresa': item[1],
+                    'nome_pessoa': item[2], 'sobrenome_pessoa': item[3],
+                    'descricao': item[4], 'id_pais': item[5]
+                }
+                nova_lista.append(dicionario)
+            json.dump(nova_lista, arquivo, indent=4, ensure_ascii=False)
+            print(f'Sucesso ao salvar as informações no arquivo : {nome_arquivo}.json')
+    except Exception as error:
+        print(f'Erro ao salvar o arquivo: {error}')    
 
+# estrutura de menu para o acesso do CRUD
 while conexao:
     opcao = input('Escolha uma opção Abaixo:\n'
                   '1 - Cadastrar\n'
@@ -202,11 +243,14 @@ while conexao:
         case '2':
             listar_suporte()
         case '3':
-            id_suporte = input('Digite o id do suporte: ')
+            id_suporte = valida_id('suporte')
             listar_suporte('id_suporte', id_suporte)
         case '4':
-            id_pais = input('Digite o id do pais: ')
-            listar_suporte('id_pais', id_pais)
+            id_pais = listar_pais()
+            if id_pais is None:
+                continue
+            else:
+                listar_suporte('id_pais', id_pais)
         case '5':
             atualizar_suporte()
         case '6':
